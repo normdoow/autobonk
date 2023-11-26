@@ -1,9 +1,9 @@
-# Auto Attack
+# AutoBonk
 
 Run
 
 ```
-yarn install 
+yarn install
 # or npm install
 ```
 
@@ -22,4 +22,3 @@ Start the script
 ```
 node index.js
 ```
-
