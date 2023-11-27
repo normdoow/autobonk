@@ -20,6 +20,7 @@
     "dotenv": "^16.3.1",
     "ethers": "5.7.2",
     "node-fetch": "2.6.1",
-    "node-telegram-bot-api": "^0.64.0"
+    "node-telegram-bot-api": "^0.64.0",
+    "viem": "^1.19.9"
   }
 }

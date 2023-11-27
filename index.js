@@ -1,6 +1,10 @@
 const { ethers, providers, Wallet } = require('ethers')
 const fetch = require('node-fetch')
 const TelegramBot = require('node-telegram-bot-api')
+const { createPublicClient, http, createWalletClient } = require('viem')
+const { privateKeyToAccount } = require('viem/accounts')
+const { base } = require('viem/chains')
+const abi = require('./abi.json')
 
 const graphQLNode = 'https://grateful-sink-production.up.railway.app/'
 const contractAddress = '0x0e22B5f3E11944578b37ED04F5312Dfc246f443C'
@@ -38,6 +42,7 @@ const leaderboardQuery = () => `
 {
   pets (
     first: 1000,
+    skip: 500,
     where: {
       owner_not: "0x0000000000000000000000000000000000000000"
     },
@@ -59,6 +64,22 @@ const leaderboardQuery = () => `
 
 const sleep = async (ms) => {
     return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function getWalletClient() {
+    const transport = http(env.NODE_URL)
+    return createWalletClient({
+        chain: base,
+        transport: transport,
+    })
+}
+
+function getPublicClient() {
+    const transport = http(env.NODE_URL)
+    return createPublicClient({
+        chain: base,
+        transport: transport,
+    })
 }
 
 const getLeaderboard = async () => {
@@ -158,6 +179,7 @@ const main = async () => {
                             .div(ethers.BigNumber.from(10))
                     )
                 ) {
+                    console.log('skipping pet', leaderboardPet.id)
                     continue
                 }
 
@@ -177,20 +199,37 @@ const main = async () => {
                     const itemsOwned = itemsOwnedJson.data.pet.itemsOwned
                     if (!itemsOwned.includes(6)) {
                         console.log(`Attacking pet ${leaderboardPet.id}`)
+
                         const contract = new ethers.Contract(
                             contractAddress,
-                            [
-                                'function attack(uint256 fromId, uint256 toId) external',
-                            ],
+                            abi,
                             wallet
                         )
                         try {
-                            const tx = await contract.attack(
-                                petId,
-                                leaderboardPet.id
+                            const { request, result } =
+                                await getPublicClient().simulateContract({
+                                    account: privateKeyToAccount(
+                                        env.PRIVATE_KEY
+                                    ),
+                                    address: contractAddress,
+                                    abi: abi,
+                                    functionName: 'attack',
+                                    args: [petId, leaderboardPet.id],
+                                })
+
+                            console.log('result', result)
+
+                            const tx = await getWalletClient().writeContract(
+                                request
                             )
-                            console.log(`-> Transaction hash: ${tx.hash}`)
-                            const receipt = await tx.wait()
+
+                            // const tx = await contract.attack(
+                            //     petId,
+                            //     leaderboardPet.id
+                            // )
+                            console.log(`-> Transaction hash: ${tx}`)
+                            // console.log(`-> Transaction hash: ${tx.hash}`)
+                            // const receipt = await tx.wait()
                             console.log(
                                 `-> Transaction confirmed in block ${receipt.blockNumber}`
                             )
@@ -233,6 +272,8 @@ const main = async () => {
                                 `-> !!!Error attacking pet ${leaderboardPet.id}: ${e}`
                             )
                         }
+                    } else {
+                        console.log('they have a shield')
                     }
                 }
             }
