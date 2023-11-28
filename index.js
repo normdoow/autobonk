@@ -1,10 +1,11 @@
-const { ethers, providers, Wallet } = require('ethers')
+const { ethers, Wallet } = require('ethers')
 const fetch = require('node-fetch')
 const TelegramBot = require('node-telegram-bot-api')
 const { createPublicClient, http, createWalletClient } = require('viem')
 const { privateKeyToAccount } = require('viem/accounts')
 const { base } = require('viem/chains')
 const abi = require('./abi.json')
+const { default: axios } = require('axios')
 
 const graphQLNode = 'https://grateful-sink-production.up.railway.app/'
 const contractAddress = '0x0e22B5f3E11944578b37ED04F5312Dfc246f443C'
@@ -82,6 +83,20 @@ function getPublicClient() {
     })
 }
 
+async function getCommit(petId) {
+    const resp = await axios.get(
+        `https://frenpet.dievardump.com/api/bonks/commit/${petId}`
+    )
+    return resp.data.data
+}
+
+async function getReveal(petId) {
+    const resp = await axios.get(
+        `https://frenpet.dievardump.com/api/bonks/reveal/${petId}`
+    )
+    return resp.data.data
+}
+
 const getLeaderboard = async () => {
     const leaderboardResponse = await fetch(graphQLNode, {
         method: 'POST',
@@ -107,7 +122,7 @@ const main = async () => {
         console.log(`Telegram bot started`)
     }
 
-    const lastAttachedTimestamp = {}
+    const lastAttackedTimestamp = {}
 
     const web3 = new ethers.providers.JsonRpcProvider(env.NODE_URL)
     const wallet = new Wallet(env.PRIVATE_KEY, web3)
@@ -155,10 +170,10 @@ const main = async () => {
                 continue
             }
 
-            if (typeof lastAttachedTimestamp[petId] === 'undefined') {
-                lastAttachedTimestamp[petId] = 0
+            if (typeof lastAttackedTimestamp[petId] === 'undefined') {
+                lastAttackedTimestamp[petId] = 0
             }
-            if (lastAttachedTimestamp[petId] + 15 * 60 > now) {
+            if (lastAttackedTimestamp[petId] + 15 * 60 > now) {
                 console.log(
                     `-> Pet ${petId} already attacked in the last 15 minutes`
                 )
@@ -179,7 +194,11 @@ const main = async () => {
                             .div(ethers.BigNumber.from(10))
                     )
                 ) {
-                    console.log('skipping pet', leaderboardPet.id)
+                    console.log(
+                        'skipping pet',
+                        leaderboardPet.id,
+                        'score is too low'
+                    )
                     continue
                 }
 
@@ -200,12 +219,11 @@ const main = async () => {
                     if (!itemsOwned.includes(6)) {
                         console.log(`Attacking pet ${leaderboardPet.id}`)
 
-                        const contract = new ethers.Contract(
-                            contractAddress,
-                            abi,
-                            wallet
-                        )
                         try {
+                            // commit bonk
+                            const commitData = await getCommit(petId)
+                            console.log('commitData', commitData)
+
                             const { request, result } =
                                 await getPublicClient().simulateContract({
                                     account: privateKeyToAccount(
@@ -213,26 +231,48 @@ const main = async () => {
                                     ),
                                     address: contractAddress,
                                     abi: abi,
-                                    functionName: 'attack',
-                                    args: [petId, leaderboardPet.id],
+                                    functionName: 'bonkCommit',
+                                    args: [
+                                        petId,
+                                        leaderboardPet.id,
+                                        commitData.nonce,
+                                        commitData.commit,
+                                        commitData.signature,
+                                    ],
                                 })
-
-                            console.log('result', result)
 
                             const tx = await getWalletClient().writeContract(
                                 request
                             )
+                            await getPublicClient().waitForTransactionReceipt({
+                                hash: tx,
+                            })
+                            console.log(`-> Transaction hash commit: ${tx}`)
 
-                            // const tx = await contract.attack(
-                            //     petId,
-                            //     leaderboardPet.id
-                            // )
-                            console.log(`-> Transaction hash: ${tx}`)
-                            // console.log(`-> Transaction hash: ${tx.hash}`)
-                            // const receipt = await tx.wait()
-                            console.log(
-                                `-> Transaction confirmed in block ${receipt.blockNumber}`
+                            // reveal bonk
+                            const revealData = await getReveal(petId)
+
+                            const { request: request2, result: result2 } =
+                                await getPublicClient().simulateContract({
+                                    account: privateKeyToAccount(
+                                        env.PRIVATE_KEY
+                                    ),
+                                    address: contractAddress,
+                                    abi: abi,
+                                    functionName: 'bonkReveal',
+                                    args: [petId, revealData.reveal],
+                                })
+
+                            const tx2 = await getWalletClient().writeContract(
+                                request2
                             )
+
+                            await getPublicClient().waitForTransactionReceipt({
+                                hash: tx2,
+                            })
+                            console.log(`-> Transaction hash reveal: ${tx2}`)
+
+                            // get new score
                             const updatedPetResponse = await fetch(
                                 graphQLNode,
                                 {
@@ -247,6 +287,7 @@ const main = async () => {
                             )
                             const updatedPetJson =
                                 await updatedPetResponse.json()
+                            console.log('updatedPetJson', updatedPetJson)
                             const updatedPet = updatedPetJson.data.pet
                             const updatedPetScore = updatedPet.score
                             const updatedScore = ethers.BigNumber.from(
@@ -265,11 +306,11 @@ const main = async () => {
                                     `Pet ${petId} won score: ${formatedScore.toString()}`
                                 )
                             }
-                            lastAttachedTimestamp[petId] = now
+                            lastAttackedTimestamp[petId] = now
                             break
                         } catch (e) {
                             console.log(
-                                `-> !!!Error attacking pet ${leaderboardPet.id}: ${e}`
+                                `-> !!!Error attacking pet ${leaderboardPet.id}: ${e.message}`
                             )
                         }
                     } else {
@@ -279,7 +320,7 @@ const main = async () => {
             }
         }
 
-        await sleep(5000)
+        await sleep(25000)
     }
 }
 

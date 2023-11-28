@@ -1,5 +1,83 @@
 [
     {
+      "inputs": [],
+      "name": "BonkCommitAlreadyUsed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "BonkCommitRevealMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "BonkHasShield",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "BonkLevelError",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "BonkNotSelf",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "petId",
+          "type": "uint256"
+        }
+      ],
+      "name": "BonkTooEarly",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "CanNotUnequip",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidBonkSignature",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "nonce",
+          "type": "bytes32"
+        }
+      ],
+      "name": "NeedToRevealBonkFirst",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoPendingBonk",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_user",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_contractOwner",
+          "type": "address"
+        }
+      ],
+      "name": "NotContractOwner",
+      "type": "error"
+    },
+    {
       "anonymous": false,
       "inputs": [
         {
@@ -28,6 +106,87 @@
         }
       ],
       "name": "Attack",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "attackerId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "targetId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "nonce",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "commit",
+          "type": "bytes32"
+        }
+      ],
+      "name": "BonkCommit",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "attackerId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "targetId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "commit",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "reveal",
+          "type": "bytes32"
+        }
+      ],
+      "name": "BonkReveal",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "attackerId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "targetId",
+          "type": "uint256"
+        }
+      ],
+      "name": "BonkTooSlow",
       "type": "event"
     },
     {
@@ -93,19 +252,59 @@
       "type": "event"
     },
     {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "nftId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "giver",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "itemId",
+          "type": "uint256"
+        }
+      ],
+      "name": "SellItem",
+      "type": "event"
+    },
+    {
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "fromId",
+          "name": "attackerId",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "toId",
+          "name": "targetId",
           "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "nonce",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "commit",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "signature",
+          "type": "bytes"
         }
       ],
-      "name": "attack",
+      "name": "bonkCommit",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -114,16 +313,29 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "_deadId",
+          "name": "attackerId",
           "type": "uint256"
         },
         {
-          "internalType": "uint256",
-          "name": "_tokenId",
-          "type": "uint256"
+          "internalType": "bytes32",
+          "name": "reveal",
+          "type": "bytes32"
         }
       ],
-      "name": "kill",
+      "name": "bonkReveal",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newBonkSigner",
+          "type": "address"
+        }
+      ],
+      "name": "setBonkSigner",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
