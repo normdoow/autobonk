@@ -7,7 +7,7 @@ const { base } = require('viem/chains')
 const abi = require('./abi.json')
 const { default: axios } = require('axios')
 
-const graphQLNode = 'https://grateful-sink-production.up.railway.app/'
+const graphQLNode = 'https://api.frenpet.xyz/'
 const contractAddress = '0x0e22B5f3E11944578b37ED04F5312Dfc246f443C'
 
 const petQuery = (owner) => `
@@ -43,7 +43,7 @@ const leaderboardQuery = () => `
 {
   pets (
     first: 1000,
-    skip: 500,
+    skip: 75,
     where: {
       owner_not: "0x0000000000000000000000000000000000000000"
     },
@@ -215,8 +215,8 @@ const main = async () => {
                         }),
                     })
                     const itemsOwnedJson = await itemsOwnedResponse.json()
-                    const itemsOwned = itemsOwnedJson.data.pet.itemsOwned
-                    if (!itemsOwned.includes(6)) {
+                    const itemsOwned = itemsOwnedJson.data?.pet.itemsOwned
+                    if (!itemsOwned?.includes(6)) {
                         console.log(`Attacking pet ${leaderboardPet.id}`)
 
                         try {
